@@ -1,0 +1,6 @@
+httpx
+google-cloud-storage>=2.18.0
+azure-storage-blob>=12.23.0
+azure-identity>=1.17.0
+openai>=1.40.0
+pytest>=8.3.0
