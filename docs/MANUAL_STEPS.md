@@ -38,9 +38,9 @@ Confirm token access for:
    - `config`
    - `study-guides`
    - `runs`
-3. Upload to `config`:
-   - `study-guide-template.md`
-   - `guidelines.md`
+3. Upload to `config` (canonical files are in `config/` at project root):
+   - `study-guide-template.md` — structure: key definitions, concepts, examples, practice questions, diagrams, references
+   - `guidelines.md` — rules: no detail omitted, diagrams in Mermaid, cite all source material
 4. Grant the runner identity **Storage Blob Data Contributor**.
 
 ## 5) Runner environment variables
