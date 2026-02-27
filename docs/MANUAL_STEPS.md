@@ -41,6 +41,25 @@ The project includes an Azure Functions app (`function_app.py`, `host.json`) for
 4. Set **Application settings** (see section 6).
 5. The function runs at **2:00 AM UTC daily** by default. To change the schedule, edit the `schedule` in `function_app.py` (cron format: `sec min hour day month weekday`).
 
+### 4a) Fix deployment "not authorized" (OIDC identity needs storage access)
+
+When using `AzureWebJobsStorage__accountName` + RBAC (managed identity), the **deployment identity** (GitHub OIDC service principal) must have **Storage Blob Data Contributor** on the storage account. Azure's auto-created OIDC app can be hard to locate. Use a manually created service principal:
+
+1. **Create App Registration** in Microsoft Entra ID:
+   - **App registrations** → **New registration** → Name: `github-study-guide-deploy` → Register.
+2. **Add Federated Credential**:
+   - Certificates & secrets → **Federated credentials** → Add:
+     - Issuer: `https://token.actions.githubusercontent.com`
+     - Subject: `repo:meliadamian17/study-guide-agent:ref:refs/heads/master`
+     - Audience: `api://AzureADTokenExchange`
+3. **Grant roles** (use the app's **Application (client) ID**):
+   - **Function App** `study-guide-mcp` → IAM → Add role assignment → **Website Contributor** → assign to the app by name or Client ID.
+   - **Storage account** `dmstudyguide` → IAM → Add role assignment → **Storage Blob Data Contributor** → assign to the app.
+4. **Update GitHub secrets** (repo → Settings → Secrets and variables → Actions):
+   - Update the secret your workflow uses for `client-id` (e.g. `AZUREAPPSERVICE_CLIENTID_...`) with the new app's **Application (client) ID**.
+   - Tenant and subscription secrets stay the same.
+5. Re-run the deployment workflow.
+
 ## 5) Configure storage (Azure Blob, UI only)
 
 1. Create or open a storage account.
