@@ -9,8 +9,8 @@ from study_guide_agent.storage import create_storage
 
 def load_config_from_env() -> StudyGuideConfig:
     return StudyGuideConfig(
-        agent_provider=os.getenv("AGENT_PROVIDER", "gemini"),
-        storage_provider=os.getenv("STORAGE_PROVIDER", "gcs"),
+        agent_provider=os.getenv("AGENT_PROVIDER", "azure_openai"),
+        storage_provider=os.getenv("STORAGE_PROVIDER", "azure"),
         task_prompt=os.getenv(
             "TASK_PROMPT", "Sync all courses and update study guides."
         ),

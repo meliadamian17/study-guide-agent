@@ -1,22 +1,20 @@
 # Quercus Study Guide Agent
 
-Provider-agnostic study guide runner for Quercus (Canvas) with strategy-based orchestration and storage.
+Model-only study guide runner for Quercus (Canvas) with strategy-based storage.
 
-Foundry-first stage now includes:
+Current architecture:
 
 - Expanded `CanvasTools` endpoint coverage aligned to Canvas docs
-- MCP server scaffold for Azure Functions (`mcp_server/`)
-- Env-driven Foundry client wiring in orchestrator factory
+- Azure OpenAI-compatible orchestration loop with in-process tool calling
+- Azure-first storage strategy (`AzureBlobStorage`)
 
 ## What this does
 
-- Pulls course data via shared Canvas tools.
-- Orchestrates runs with either:
-  - `gemini` strategy (`GeminiOrchestrator`)
-  - `foundry` strategy (`FoundryOrchestrator`)
+- Pulls course data via `CanvasTools`.
+- Orchestrates runs with `azure_openai` strategy (`AzureOpenAIOrchestrator`).
 - Stores study guide artifacts with either:
-  - `gcs` strategy (`GCSStorage`)
   - `azure` strategy (`AzureBlobStorage`)
+  - `gcs` strategy (`GCSStorage`)
 - Writes run history metadata per execution.
 
 ## How to interact with it
@@ -42,23 +40,20 @@ Use your virtualenv interpreter:
 venv/bin/python -m study_guide_agent
 ```
 
-## Runtime configuration
+## Runtime Configuration
 
 Set environment variables before running:
 
-- `AGENT_PROVIDER`: `gemini` (default) or `foundry`
-- `STORAGE_PROVIDER`: `gcs` (default) or `azure`
+- `AGENT_PROVIDER`: `azure_openai` (default)
+- `STORAGE_PROVIDER`: `azure` (default) or `gcs`
 - `TASK_PROMPT`: override default sync prompt
 - `COURSE_FILTER`: optional filter expression
 - `RUN_ID`: optional explicit run identifier
 - `CANVAS_BASE_URL`: default `https://q.utoronto.ca`
 - `CANVAS_TOKEN`: required for Canvas API calls
-- `MCP_SERVER_URL`: required for Foundry orchestrator tool connectivity
-- `FOUNDRY_ENDPOINT`: `https://<resource>.services.ai.azure.com`
-- `FOUNDRY_PROJECT`: Foundry project name
-- `FOUNDRY_APP`: Foundry app name
-- `FOUNDRY_MODEL`: optional model override (default `gpt-4.1`)
-- `FOUNDRY_API_VERSION`: optional API version override
+- `AZURE_OPENAI_ENDPOINT`: `https://<resource>.services.ai.azure.com/openai/v1/`
+- `AZURE_OPENAI_MODEL`: deployment name (for this rollout: Kimi K2.5 deployment)
+- `AZURE_OPENAI_API_KEY`: optional (if unset, Entra ID via `DefaultAzureCredential` is used)
 
 ## Canvas API references used for CanvasTools
 
@@ -70,11 +65,11 @@ Set environment variables before running:
 - Announcements: [Announcements API](https://developerdocs.instructure.com/services/canvas/resources/announcements#method.announcements_api.index)
 - Assignments: [Assignments API](https://developerdocs.instructure.com/services/canvas/resources/assignments)
 
-## Foundry + MCP quick start
+## Azure Model-Only Quick Start
 
-1. Configure env vars (Canvas + Foundry + MCP).
-2. Deploy `mcp_server/` to Azure Functions.
-3. Register MCP server in Foundry and attach tool calls.
+1. Deploy model in Azure AI Foundry (Kimi K2.5).
+2. Set `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_MODEL`.
+3. Set Canvas credentials and storage provider.
 4. Run:
 
 ```bash

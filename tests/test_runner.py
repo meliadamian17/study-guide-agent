@@ -34,8 +34,8 @@ def test_runner_invokes_orchestrator_with_loaded_template_guidelines():
     orchestrator = FakeOrchestrator()
     storage = FakeStorage()
     config = StudyGuideConfig(
-        agent_provider="gemini",
-        storage_provider="gcs",
+        agent_provider="azure_openai",
+        storage_provider="azure",
         task_prompt="sync",
     )
 
@@ -56,18 +56,18 @@ def test_load_config_from_env_defaults(monkeypatch):
 
     config = load_config_from_env()
 
-    assert config.agent_provider == "gemini"
-    assert config.storage_provider == "gcs"
+    assert config.agent_provider == "azure_openai"
+    assert config.storage_provider == "azure"
     assert config.task_prompt == "Sync all courses and update study guides."
 
 
 def test_load_config_from_env_uses_values(monkeypatch):
-    monkeypatch.setenv("AGENT_PROVIDER", "foundry")
+    monkeypatch.setenv("AGENT_PROVIDER", "azure_openai")
     monkeypatch.setenv("STORAGE_PROVIDER", "azure")
     monkeypatch.setenv("TASK_PROMPT", "custom prompt")
 
     config = load_config_from_env()
 
-    assert config.agent_provider == "foundry"
+    assert config.agent_provider == "azure_openai"
     assert config.storage_provider == "azure"
     assert config.task_prompt == "custom prompt"

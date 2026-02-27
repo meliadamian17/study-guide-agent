@@ -1,112 +1,76 @@
-# Manual Steps (Foundry-First Rollout)
+# Manual Steps (Model-Only Azure Rollout)
 
-This checklist documents everything you need to do manually after the code changes.
+This checklist is for the current architecture: model-only orchestration in-process (no Foundry agents and no MCP server).
 
 ## 1) Quercus / Canvas token
 
 1. Sign in to `https://q.utoronto.ca`.
-2. Create an access token from Canvas account settings (or use your institution's OAuth flow).
-3. Store token securely (Key Vault for Azure deployment).
-4. Do not commit tokens into repository files.
+2. Create an access token in Canvas account settings.
+3. Store the token in Azure Key Vault.
+4. Do not commit tokens in repository files.
 
-API reference for auth and schema:
+## 2) Verify Canvas permissions
 
-- Canvas Schema + Auth: [Canvas schema](https://developerdocs.instructure.com/services/canvas#schema)
+Confirm token access for:
 
-## 2) Verify Canvas permissions and endpoint coverage
+- `GET /api/v1/courses`
+- `GET /api/v1/courses/:course_id/modules`
+- `GET /api/v1/courses/:course_id/modules/:module_id/items`
+- `GET /api/v1/courses/:course_id/pages/:url_or_id`
+- `GET /api/v1/files/:id`
+- `GET /api/v1/announcements`
+- `GET /api/v1/courses/:course_id/assignments`
 
-Confirm your token has access needed for:
+## 3) Deploy model in Azure AI Foundry (UI only)
 
-- Courses: `GET /api/v1/courses`
-- Modules: `GET /api/v1/courses/:course_id/modules`
-- Module items: `GET /api/v1/courses/:course_id/modules/:module_id/items`
-- Pages: `GET /api/v1/courses/:course_id/pages/:url_or_id`
-- Files: `GET /api/v1/files/:id` and file download URL
-- Announcements: `GET /api/v1/announcements`
-- Assignments: `GET /api/v1/courses/:course_id/assignments`
+1. Open [Azure AI Foundry](https://ai.azure.com) and your project.
+2. Go to **Models** / **Deployments**.
+3. Deploy **Kimi K2.5**.
+4. Record:
+   - Endpoint: `https://<resource>.services.ai.azure.com/openai/v1/`
+   - Deployment name (used as `AZURE_OPENAI_MODEL`)
+5. Ensure your identity has role **Cognitive Services OpenAI User** on the resource.
 
-Docs:
+## 4) Configure storage (Azure Blob, UI only)
 
-- Courses: [Courses API](https://developerdocs.instructure.com/services/canvas/resources/courses#method.courses.index)
-- Modules: [Modules API](https://developerdocs.instructure.com/services/canvas/resources/modules#method.context_modules_api.index)
-- Pages: [Pages API](https://developerdocs.instructure.com/services/canvas/resources/pages#method.wiki_pages_api.show)
-- Files: [Files API](https://developerdocs.instructure.com/services/canvas/resources/files)
-- Announcements: [Announcements API](https://developerdocs.instructure.com/services/canvas/resources/announcements#method.announcements_api.index)
-- Assignments: [Assignments API](https://developerdocs.instructure.com/services/canvas/resources/assignments)
+1. Create or open a storage account.
+2. Create containers:
+   - `config`
+   - `study-guides`
+   - `runs`
+3. Upload to `config`:
+   - `study-guide-template.md`
+   - `guidelines.md`
+4. Grant the runner identity **Storage Blob Data Contributor**.
 
-## 3) Local environment setup
+## 5) Runner environment variables
 
-1. Activate virtualenv:
-   - `source venv/bin/activate`
-2. Install/refresh dependencies:
-   - `pip install -e ".[dev,azure]"`
-3. Set env vars:
-   - `CANVAS_BASE_URL=https://q.utoronto.ca`
-   - `CANVAS_TOKEN=<your_token>`
-   - `AGENT_PROVIDER=foundry`
-   - `STORAGE_PROVIDER=azure`
-   - `MCP_SERVER_URL=<your_mcp_url>`
-   - `FOUNDRY_ENDPOINT=https://<resource>.services.ai.azure.com`
-   - `FOUNDRY_PROJECT=<project_name>`
-   - `FOUNDRY_APP=<app_name>`
-   - optional: `FOUNDRY_MODEL=gpt-4.1`
-   - optional: `FOUNDRY_API_VERSION=2025-11-15-preview`
+Set these where the runner executes:
 
-## 4) Azure Foundry setup
+- `AGENT_PROVIDER=azure_openai`
+- `STORAGE_PROVIDER=azure`
+- `CANVAS_BASE_URL=https://q.utoronto.ca`
+- `CANVAS_TOKEN=<token or Key Vault reference>`
+- `AZURE_OPENAI_ENDPOINT=https://<resource>.services.ai.azure.com/openai/v1/`
+- `AZURE_OPENAI_MODEL=<kimi-k2.5 deployment name>`
+- optional: `AZURE_OPENAI_API_KEY=<key>` (not needed with Entra ID)
+- optional: `TASK_PROMPT=<override>`
+- optional: `COURSE_FILTER=<filter>`
+- optional: `RUN_ID=<explicit id>`
 
-1. Create an Azure AI Foundry project and application.
-2. Deploy MCP server endpoint (Azure Functions recommended).
-3. Register MCP server in Foundry so agent can call tools.
-4. Ensure identity/authentication path works (Entra ID recommended).
+## 6) Run and verify
 
-## 5) MCP server deployment
+1. Run tests: `venv/bin/python -m pytest`
+2. Run the app: `venv/bin/python -m study_guide_agent`
+3. Verify outputs:
+   - Study guides are written per course.
+   - Run summary file exists in `runs/`.
+   - No auth or rate-limit errors in logs.
 
-Project scaffold exists in `mcp_server/`.
+## 7) First production run checklist
 
-1. Create Function App resource.
-2. Deploy contents of `mcp_server/`.
-3. Configure Function App settings:
-   - `CANVAS_BASE_URL`
-   - `CANVAS_TOKEN`
-   - `STORAGE_PROVIDER=azure`
-4. Verify HTTP route is reachable (`/api/mcp/tools` by default Function route convention).
-
-## 6) Storage preparation
-
-For production Azure storage, create containers or equivalent prefixes:
-
-- `config/` (template + guidelines)
-- `study-guides/` (per-course output)
-- `runs/` (run history summaries)
-
-Upload:
-
-- `study-guide-template.md`
-- `guidelines.md`
-
-## 7) Scheduling
-
-Pick one:
-
-- Azure Function timer trigger
-- Logic App scheduled trigger
-
-Suggested cron: `0 0 2 * * *` (2:00 AM daily, adjust timezone as needed).
-
-## 8) Operational checks
-
-1. Run tests:
-   - `venv/bin/python -m pytest`
-2. Trigger one manual run.
-3. Confirm:
-   - Study guides written per course
-   - `runs/<run_id>.json` exists
-   - No authentication or rate-limit failures in logs
-
-## 9) First production run checklist
-
-- [ ] Canvas token valid
-- [ ] Foundry env vars set
-- [ ] MCP URL reachable from Foundry
-- [ ] Template/guidelines uploaded
+- [ ] Kimi K2.5 deployment is healthy
+- [ ] `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_MODEL` are correct
+- [ ] Canvas token is valid
+- [ ] Config files are uploaded
 - [ ] One dry run completed successfully
