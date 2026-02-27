@@ -31,7 +31,17 @@ Confirm token access for:
    - Deployment name (used as `AZURE_OPENAI_MODEL`)
 5. Ensure your identity has role **Cognitive Services OpenAI User** on the resource.
 
-## 4) Configure storage (Azure Blob, UI only)
+## 4) Deploy as Azure Function (timer-triggered)
+
+The project includes an Azure Functions app (`function_app.py`, `host.json`) for timer-triggered runs.
+
+1. Create a Function App in Azure Portal: **Python 3.11+**, **Consumption** or **Flex Consumption**.
+2. Connect **Deployment Center** to GitHub (repo `study-guide-agent`, branch `master`).
+3. Use **Add a new workflow** — Azure will create `master_<app-name>.yml` and deploy on push.
+4. Set **Application settings** (see section 6).
+5. The function runs at **2:00 AM UTC daily** by default. To change the schedule, edit the `schedule` in `function_app.py` (cron format: `sec min hour day month weekday`).
+
+## 5) Configure storage (Azure Blob, UI only)
 
 1. Create or open a storage account.
 2. Create containers:
@@ -41,9 +51,9 @@ Confirm token access for:
 3. Upload to `config` (canonical files are in `config/` at project root):
    - `study-guide-template.md` — structure: key definitions, concepts, examples, practice questions, diagrams, references
    - `guidelines.md` — rules: no detail omitted, diagrams in Mermaid, cite all source material
-4. Grant the runner identity **Storage Blob Data Contributor**.
+4. Grant the Function App's managed identity **Storage Blob Data Contributor** on the storage account.
 
-## 5) Runner environment variables
+## 6) Runner environment variables
 
 Set these where the runner executes:
 
@@ -54,11 +64,12 @@ Set these where the runner executes:
 - `AZURE_OPENAI_ENDPOINT=https://<resource>.services.ai.azure.com/openai/v1/`
 - `AZURE_OPENAI_MODEL=<kimi-k2.5 deployment name>`
 - optional: `AZURE_OPENAI_API_KEY=<key>` (not needed with Entra ID)
+- `AZURE_STORAGE_CONNECTION_STRING` or `AZURE_STORAGE_ACCOUNT_URL` (e.g. `https://<account>.blob.core.windows.net`; with URL, uses managed identity)
 - optional: `TASK_PROMPT=<override>`
 - optional: `COURSE_FILTER=<filter>`
 - optional: `RUN_ID=<explicit id>`
 
-## 6) Run and verify
+## 7) Run and verify
 
 1. Run tests: `venv/bin/python -m pytest`
 2. Run the app: `venv/bin/python -m study_guide_agent`
@@ -67,7 +78,7 @@ Set these where the runner executes:
    - Run summary file exists in `runs/`.
    - No auth or rate-limit errors in logs.
 
-## 7) First production run checklist
+## 8) First production run checklist
 
 - [ ] Kimi K2.5 deployment is healthy
 - [ ] `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_MODEL` are correct
